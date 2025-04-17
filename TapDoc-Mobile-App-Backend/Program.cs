@@ -38,13 +38,12 @@ builder.Services.AddScoped<PrescriptionRecordService>();
 
 var app = builder.Build();
 
-// ✅ Swagger only in development
 app.UseMiddleware<SwaggerAuthMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TapDoc API v1");
+    c.SwaggerEndpoint("/swagger/v1/swagger.html", "TapDoc API v1");
     c.RoutePrefix = "swagger"; // So URL will be /swagger
 });
 
