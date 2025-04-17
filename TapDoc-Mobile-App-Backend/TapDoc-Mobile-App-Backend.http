@@ -1,0 +1,6 @@
+@TapDoc_Mobile_App_Backend_HostAddress = http://localhost:5236
+
+GET {{TapDoc_Mobile_App_Backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
