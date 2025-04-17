@@ -10,12 +10,13 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:5173") // Replace with your frontend URL in production
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        policy
+            .AllowAnyOrigin() // 👈 Expo might use random IPs during development
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
+
 
 // ✅ Connection String from Environment Variable
 var connectionString = builder.Configuration.GetConnectionString("MyDBContext");
@@ -38,11 +39,15 @@ builder.Services.AddScoped<PrescriptionRecordService>();
 var app = builder.Build();
 
 // ✅ Swagger only in development
-if (app.Environment.IsDevelopment())
+app.UseMiddleware<SwaggerAuthMiddleware>();
+
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TapDoc API v1");
+    c.RoutePrefix = "swagger"; // So URL will be /swagger
+});
+
 
 app.UseHttpsRedirection();
 app.UseCors(); // Important: Must come BEFORE Authentication
