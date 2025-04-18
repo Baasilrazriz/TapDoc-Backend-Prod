@@ -34,7 +34,11 @@ builder.Services.AddScoped<EmergencyContactsService>();
 builder.Services.AddScoped<EmergencyServicesService>();
 builder.Services.AddScoped<RecordsService>();
 builder.Services.AddScoped<PatientService>();
+builder.Services.AddScoped<AppointmentService>();
 builder.Services.AddScoped<PrescriptionRecordService>();
+builder.Services.AddScoped<UsersService>();
+builder.Services.AddScoped<PrescriptionRecordService>();
+
 
 var app = builder.Build();
 

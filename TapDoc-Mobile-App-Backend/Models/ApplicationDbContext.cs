@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Identity.Client;
 using System.Diagnostics.Contracts;
 
@@ -6,10 +7,15 @@ namespace TapDoc_Mobile_App_Backend.Models
 {
     public class ApplicationDbContext : DbContext
     {
+        private readonly IConfiguration _configuration;
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlServer("Data Source=shahood-rehan;Initial Catalog=TapDocApp;Integrated Security=True;Trust Server Certificate=True;");
+            if (!optionsBuilder.IsConfigured)
+            {
+                var connectionString = _configuration.GetConnectionString("MyDBContext");
+                optionsBuilder.UseSqlServer(connectionString);
+            }
         }
 
         public DbSet<Users> Users { get; set; }
