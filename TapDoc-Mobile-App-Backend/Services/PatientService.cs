@@ -58,25 +58,44 @@ namespace TapDoc_Mobile_App_Backend.Services
 
             var DoctorIDs = doctorRatings.Select(x => x.DoctorID).ToList();
 
-            var doctors = await _dbContext.DoctorDetails
-                        .Where(d => DoctorIDs.Contains(d.DoctorID) &&
-                        (d.City ?? "").ToLower() == (City ?? "").ToLower()) // Null-safe ToLower()
-                        .ToListAsync();
+            // Declare doctors outside the if-block
+            List<DoctorDetails> doctors;
 
+            if (!string.IsNullOrWhiteSpace(City))
+            {
+                doctors = await _dbContext.DoctorDetails
+                    .Where(d => DoctorIDs.Contains(d.DoctorID) &&
+                                (d.City ?? "").ToLower() == City.ToLower())
+                    .ToListAsync();
+            }
+            else
+            {
+                doctors = await _dbContext.DoctorDetails
+                    .Where(d => DoctorIDs.Contains(d.DoctorID))
+                    .ToListAsync();
+            }
+
+            if (doctors == null || !doctors.Any())
+                return null;
 
             var result = doctorRatings
-                .Select(rating => new HomeScreenBestRatedDoctorsDTO
+                .Select(rating =>
                 {
-                    DoctorID = rating.DoctorID,
-                    DoctorRating = rating.AverageRating,
-                    DoctorExperience = doctors.FirstOrDefault(d=> d.DoctorID == rating.DoctorID).TotalExperience,
-                    DoctorName = doctors.FirstOrDefault(d => d.DoctorID == rating.DoctorID)?.FullName,
-                    DoctorSpeciality = doctors.FirstOrDefault(d => d.DoctorID == rating.DoctorID)?.Speciality,
-                    DoctorProfileUrl = doctors.FirstOrDefault(d => d.DoctorID == rating.DoctorID)?.Image
+                    var doctor = doctors.FirstOrDefault(d => d.DoctorID == rating.DoctorID);
+                    return doctor == null ? null : new HomeScreenBestRatedDoctorsDTO
+                    {
+                        DoctorID = rating.DoctorID,
+                        DoctorRating = rating.AverageRating,
+                        DoctorExperience = doctor.TotalExperience,
+                        DoctorName = doctor.FullName,
+                        DoctorSpeciality = doctor.Speciality,
+                        DoctorProfileUrl = doctor.Image
+                    };
                 })
+                .Where(x => x != null)
                 .ToList();
 
-            return result;
+            return result.Any() ? result : null;
         }
         public async Task<List<HomeUpcomingAppointmentsDTO>> GetHomeUpcomingAppointmentDetails(int PatientID, int pageNo, int pageSize)
         {
@@ -188,7 +207,7 @@ namespace TapDoc_Mobile_App_Backend.Services
             return new OkObjectResult(patient);
         }
 
-        public async Task<IActionResult> UpdatePatientBMIDetails(int PatientID, double height, double weight)
+        public async Task<PatientDetails> UpdatePatientBMIDetails(int PatientID, double height, double weight)
         {
             var patient = _dbContext.PatientDetails.Where(x => x.PatientID == PatientID).FirstOrDefault();
             if (patient != null)
@@ -197,7 +216,7 @@ namespace TapDoc_Mobile_App_Backend.Services
                 patient.Weight = weight;
             }
             await _dbContext.SaveChangesAsync();
-            return new OkObjectResult(patient);
+            return patient;
         }
     }
 }

@@ -10,7 +10,7 @@ namespace TapDoc_Mobile_App_Backend.Models
 
         [ForeignKey("DoctorDetails")]
         public int DoctorID { get; set; }
-        public int DayOfWeek {  get; set; }
+        public string DayOfWeek {  get; set; }
         public DateTime StartTime {  get; set; }
         public DateTime EndDate {  get; set; }
 

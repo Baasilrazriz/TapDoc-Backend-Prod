@@ -8,7 +8,6 @@ using TapDoc_Mobile_App_Backend.Services;
 
 namespace TapDoc_Mobile_App_Backend.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("/EmergencyContacts")]
     public class EmergencyContactsController : ControllerBase

@@ -9,9 +9,9 @@
     }
     public static class RoleTypeEnums
     {
-        public static short Patient = 4;
-        public static short Doctor = 5;
-        public static short Pharmacy = 6;
+        public static short Patient = 1;
+        public static short Doctor = 2;
+        public static short Pharmacy = 3;
 
     }
     public static class AppointmentTypeEnums
