@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ActionConstraints;
+using Microsoft.EntityFrameworkCore;
 using TapDoc_Mobile_App_Backend.Data;
 using TapDoc_Mobile_App_Backend.Models;
 
@@ -117,7 +120,7 @@ namespace TapDoc_Mobile_App_Backend.Services
                                   .Where(r => r.DoctorID == d.DoctorID && r.IsDeleted == false && r.IsActive == true)
                                   .Sum(r => (double?)r.Rating) ?? 0
                 })
-                .OrderByDescending(d => d.TotalRatings > 0 ? d.SumRatings / d.TotalRatings : 0) 
+                .OrderByDescending(d => d.TotalRatings > 0 ? d.SumRatings / d.TotalRatings : 0)
                 .Skip((pageNo - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -134,11 +137,164 @@ namespace TapDoc_Mobile_App_Backend.Services
                                             .FirstOrDefault() ?? "Unknown",
                 DoctorExperience = d.TotalExperience,
                 DoctorAddress = $"{d.Address}, {d.City}",
-                DoctorRating = d.TotalRatings > 0 ? d.SumRatings / d.TotalRatings : 0 
+                DoctorRating = d.TotalRatings > 0 ? d.SumRatings / d.TotalRatings : 0
             }).ToList();
 
             return doctorDTOs;
         }
+
+        public async Task<DoctorDetailsForCreateAppointmentDTO> GetDoctorDetailsForAppointmentBooking(int DoctorID)
+        {
+            if (DoctorID == 0)
+            {
+                throw new Exception("DoctorID not found");
+            }
+
+            var doctorDetails = await _dbContext.DoctorDetails
+                .FirstOrDefaultAsync(x => x.DoctorID == DoctorID);
+
+            if (doctorDetails == null)
+            {
+                return null;
+            }
+
+            var doctorRatings = await _dbContext.DoctorRatings
+                .Where(x => x.DoctorID == DoctorID)
+                .ToListAsync();
+
+            double averageRating = doctorRatings.Any() ? doctorRatings.Average(r => r.Rating) : 0;
+
+            var patientIds = doctorRatings.Select(r => r.PatientID).Distinct().ToList();
+            var patients = await _dbContext.PatientDetails
+                .Where(p => patientIds.Contains(p.PatientID))
+                .ToListAsync();
+
+            var reviews = doctorRatings.Select(rating =>
+            {
+                var patient = patients.FirstOrDefault(p => p.PatientID == rating.PatientID);
+                return new DoctorReviews
+                {
+                    PatientID = rating.PatientID,
+                    PatientName = patient?.FullName ?? "Unknown",
+                    PatientImageURL = patient?.PatientImageUrl ?? "",
+                    Rating = rating.Rating,
+                    ReviewDescription = rating.Description
+                };
+            }).ToList();
+
+            var availabilityRecords = await _dbContext.AvailabilityDetails
+                .Where(x => x.DoctorID == DoctorID)
+                .ToListAsync();
+
+            var availabilityList = availabilityRecords.Select(av => new DoctorAvailability
+            {
+                Availability = new Dictionary<string, string>
+    {
+        { av.DayOfWeek, $"{av.StartTime.ToString("hh:mm tt")} - {av.EndDate.ToString("hh:mm tt")}" }
+    }
+            }).ToList();
+
+
+            var category = await _dbContext.DoctorCategories
+                .Where(c => c.CategoryID == doctorDetails.CategoryID)
+                .Select(c => c.CategoryName)
+                .FirstOrDefaultAsync();
+
+            return new DoctorDetailsForCreateAppointmentDTO
+            {
+                UserID = doctorDetails.UserID,
+                DoctorID = doctorDetails.DoctorID,
+                DoctorProfileURL = doctorDetails.Image,
+                DoctorName = doctorDetails.FullName,
+                DoctorCategory = category ?? "General",
+                DoctorRating = averageRating,
+                DoctorExperience = doctorDetails.TotalExperience,
+                DoctorFee = doctorDetails.DoctorFee,
+                DoctorDescription = doctorDetails.DoctorDescription,
+                DoctorSpeciality = doctorDetails.Speciality,
+                DoctorReviews = reviews,
+                DoctorAvailabilities = availabilityList
+            };
+        }
+
+        public async Task<InnerDocDetailsForAppointmentDTO> GetDoctorDetailsForInnerPage(int DoctorID)
+        {
+            if (DoctorID == 0)
+            {
+                throw new Exception("DoctorID not found");
+            }
+
+            var doctorDetails = await _dbContext.DoctorDetails
+                .FirstOrDefaultAsync(x => x.DoctorID == DoctorID);
+
+            if (doctorDetails == null)
+            {
+                return null;
+            }
+
+            var categoryName = await _dbContext.DoctorCategories
+                .Where(c => c.CategoryID == doctorDetails.CategoryID)
+                .Select(c => c.CategoryName)
+                .FirstOrDefaultAsync();
+
+            var availabilityRecords = await _dbContext.AvailabilityDetails
+                .Where(a => a.DoctorID == DoctorID)
+                .ToListAsync();
+
+            var availabilityList = availabilityRecords.Select(av => new DoctorAvailabilityInnerPage
+            {
+                Availability = new Dictionary<string, string>
+        {
+            { av.DayOfWeek, $"{av.StartTime.ToString("hh:mm tt")} - {av.EndDate.ToString("hh:mm tt")}" }
+        }
+            }).ToList();
+
+            return new InnerDocDetailsForAppointmentDTO
+            {
+                UserID = doctorDetails.UserID,
+                DoctorID = doctorDetails.DoctorID,
+                DoctorProfileURL = doctorDetails.Image,
+                DoctorName = doctorDetails.FullName,
+                DoctorCategory = categoryName ?? "General",
+                DoctorExperience = doctorDetails.TotalExperience,
+                DoctorFee = doctorDetails.DoctorFee,
+                DoctorDescription = doctorDetails.DoctorDescription,
+                DoctorSpeciality = doctorDetails.Speciality,
+                DoctorAvailabilities = availabilityList
+            };
+        }
+        public async Task<string> CreateAppointment(CreateAppointmentDTO reqDTO)
+        {
+            var appointment = new Appointment
+            {
+                PatientID = reqDTO.PatientID,
+                DoctorID = reqDTO.DoctorID,
+                AppointmentStatus = (int)AppointmentEnums.Pending,
+                AppointmentType = reqDTO.AppointmentType,
+            };
+            await _dbContext.AddAsync(appointment);
+            await _dbContext.SaveChangesAsync();
+
+            var appointmentDetails = new AppointmentDetails
+            {
+                AppointmentID = appointment.AppointmentID,
+                PatientID = appointment.PatientID,
+                DoctorID = appointment.DoctorID,
+                AppointmentDate = reqDTO.AppointmentDate,
+                StartTime = reqDTO.StartTime,
+                EndTime = reqDTO.EndTime,
+                AppointmentDescription = reqDTO.AppointmentDescription,
+                AppointmentFee = reqDTO.AppointmentFee,
+                NoOfSlots = reqDTO.NoOfSlots,
+                PaymentID = reqDTO.PaymentID
+            };
+            await _dbContext.AddAsync(appointmentDetails);
+            await _dbContext.SaveChangesAsync();
+            return "Appointment created successfully";
+
+        }
+
+
 
 
     }

@@ -26,12 +26,7 @@ namespace TapDoc_Mobile_App_Backend.Data
         public string Image { get; set; }
         public string Address { get; set; }
 
-        public bool IsActive { get; set; } = true;
-        public bool IsDeleted { get; set; } = false;
-
-        public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
-
-        public DateTime UpdatedAt { get; set; }
+      
 
     }
 }
