@@ -18,8 +18,6 @@ namespace TapDoc_Mobile_App_Backend.Models
         public int PaymentType { get; set; }
         public int PaymentStatus { get; set; }
         public double PaymentAmount { get; set; }
-
-
     }
 }
         

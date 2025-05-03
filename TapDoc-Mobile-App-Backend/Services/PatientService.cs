@@ -58,7 +58,6 @@ namespace TapDoc_Mobile_App_Backend.Services
 
             var DoctorIDs = doctorRatings.Select(x => x.DoctorID).ToList();
 
-            // Declare doctors outside the if-block
             List<DoctorDetails> doctors;
 
             if (!string.IsNullOrWhiteSpace(City))
