@@ -36,7 +36,7 @@ namespace TapDoc_Mobile_App_Backend.Models
         public DbSet<Localizations> Localizations { get; set; }
         public DbSet<Records> Records { get; set; }
         public DbSet<Payments> Payments { get; set; }
-
+        public DbSet<Attachments> Attachments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

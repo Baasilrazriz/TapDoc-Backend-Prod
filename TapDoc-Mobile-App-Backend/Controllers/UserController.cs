@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using System.Formats.Asn1;
 using TapDoc_Mobile_App_Backend.Data;
@@ -30,6 +31,18 @@ namespace TapDoc_Mobile_App_Backend.Controllers
                 return BadRequest("User creation failed");
             }
             return Ok(result);
+        }
+
+        [AllowAnonymous]
+        [HttpPost("UploadAttachment")]
+        public async Task<IActionResult> UploadAttachment([FromForm] UploadAttachmentModel model)
+        {
+            if (model.file == null || model.file.Length == 0)
+            {
+                throw new Exception("No file upload.");
+            }
+            var attachment = await _userService.UploadAttachmentAsync(model);
+            return Ok(attachment);
         }
     }
 }
