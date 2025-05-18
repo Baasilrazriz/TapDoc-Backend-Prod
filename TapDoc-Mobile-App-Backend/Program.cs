@@ -37,6 +37,11 @@ builder.Services.AddScoped<PatientService>();
 builder.Services.AddScoped<AppointmentService>();
 builder.Services.AddScoped<PrescriptionRecordService>();
 builder.Services.AddScoped<UsersService>();
+builder.Services.AddSingleton<EOLogger>();
+
+
+builder.Services.AddSingleton<S3Service>();
+
 builder.Services.AddScoped<PrescriptionRecordService>();
 
 

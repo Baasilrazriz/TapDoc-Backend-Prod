@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.Net.Mail;
 using TapDoc_Mobile_App_Backend.Data;
 using TapDoc_Mobile_App_Backend.Models;
 
@@ -7,9 +8,11 @@ namespace TapDoc_Mobile_App_Backend.Services
     public class UsersService
     {
         public readonly ApplicationDbContext _context;
-        public UsersService(ApplicationDbContext context)
+        public readonly S3Service _s3Service;
+        public UsersService(ApplicationDbContext context, S3Service s3Service)
         {
             _context = context;
+            _s3Service = s3Service; 
         }
         public async Task<CreateUserDTO> CreateUser(CreateUserDTO userDTO)
         {
@@ -29,6 +32,31 @@ namespace TapDoc_Mobile_App_Backend.Services
                 PhoneNo = newUser.PhoneNo,
                 RoleTypeID = newUser.RoleTypeID
             };
+        }
+        public async Task<Attachments> UploadAttachmentAsync(UploadAttachmentModel model)
+        {
+            // Ensure the user exists
+            var user = await _context.Users.FindAsync(model.UserID);
+            if (user == null)
+                throw new Exception("User not found.");
+
+            // Upload the file and get the URL
+            var pictureUrl = await _s3Service.UploadFile(model.file);
+
+            // Create and save the attachment
+            var attachment = new Attachments
+            {
+                AttachmentName = model.AttachmentName,
+                AttachmentUrl = pictureUrl,
+                CreatedBy = model.UserID,
+                CreatedOn = DateTime.Now,
+                UserID = model.UserID
+            };
+
+            _context.Attachments.Add(attachment);
+            await _context.SaveChangesAsync();
+
+            return attachment;
         }
     }
 }
