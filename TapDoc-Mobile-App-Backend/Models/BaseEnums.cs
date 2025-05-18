@@ -66,8 +66,11 @@
     {
         public static int Morning = 1;
         public static int Day = 2;
-        public static int Night= 3;
-
+        public static int Night = 3;
     }
-   
+    public static class AttachmentTypeEnums
+    {
+        public static int Image = 1;
+        public static int Document = 2;
+    }
 }

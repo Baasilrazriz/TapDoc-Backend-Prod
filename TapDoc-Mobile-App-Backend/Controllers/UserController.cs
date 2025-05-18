@@ -44,5 +44,7 @@ namespace TapDoc_Mobile_App_Backend.Controllers
             var attachment = await _userService.UploadAttachmentAsync(model);
             return Ok(attachment);
         }
+
+      
     }
 }

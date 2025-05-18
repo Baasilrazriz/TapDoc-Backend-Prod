@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Net.Mail;
 using TapDoc_Mobile_App_Backend.Data;
 using TapDoc_Mobile_App_Backend.Models;
@@ -35,15 +36,12 @@ namespace TapDoc_Mobile_App_Backend.Services
         }
         public async Task<Attachments> UploadAttachmentAsync(UploadAttachmentModel model)
         {
-            // Ensure the user exists
             var user = await _context.Users.FindAsync(model.UserID);
             if (user == null)
                 throw new Exception("User not found.");
 
-            // Upload the file and get the URL
             var pictureUrl = await _s3Service.UploadFile(model.file);
 
-            // Create and save the attachment
             var attachment = new Attachments
             {
                 AttachmentName = model.AttachmentName,
@@ -58,5 +56,8 @@ namespace TapDoc_Mobile_App_Backend.Services
 
             return attachment;
         }
+       
+
     }
+
 }
