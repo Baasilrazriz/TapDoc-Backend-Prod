@@ -20,7 +20,7 @@ namespace TapDoc_Mobile_App_Backend.Controllers
         }
 
         [HttpGet("get-patient-appointment-history")]
-        public async Task<IActionResult> GetPatientAppointmentHistory([FromQuery] int PatientID, [FromQuery] int? AppointmentStatus, [FromQuery] int pageNo = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetPatientAppointmentHistory([FromQuery] int PatientID, [FromQuery] int? AppointmentStatus, [FromQuery] int? pageNo , [FromQuery] int? pageSize)
         {
             if (PatientID == 0)
             {
@@ -72,6 +72,20 @@ namespace TapDoc_Mobile_App_Backend.Controllers
                 return BadRequest("Failed to create appointment");
             }
             return Ok(new { message = "Success", data = result });
+        }
+        [HttpGet("get-appointment-details")]
+        public async Task<IActionResult> GetAppointmentDetails([FromQuery] int AppointmentID)
+        {
+            if(AppointmentID == 0)
+            {
+                return BadRequest("Appointment ID is not valid");
+            }
+            var result = await _service.GetAppointmentDetails(AppointmentID);
+            if(result == null)
+            {
+                return BadRequest("Appointment Details not found");
+            }
+            return Ok(new {message = "Success", data = result});
         }
     }
 

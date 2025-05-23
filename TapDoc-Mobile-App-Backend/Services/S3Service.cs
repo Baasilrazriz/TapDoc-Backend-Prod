@@ -11,7 +11,7 @@ namespace TapDoc_Mobile_App_Backend.Services
         public S3Service(IConfiguration configuration, EOLogger logger)
         {
             S3_HOST = configuration.GetValue<string?>("S3:HOST") ?? throw new Exception("S3: Host Not Found");
-            USER = configuration.GetValue<string?>("S3:USER") ?? throw new Exception("S3: User not found");
+            USER = configuration.GetValue<string?>("S3:USER") ?? throw new Exception("S3: Secret key not found");
             ACCESS_KEY = configuration.GetValue<string?>("S3:ACCESS_KEY") ?? throw new Exception("S3: Access key not found");
             BUCKET = configuration.GetValue<string?>("S3:BUCKET") ?? throw new Exception("S3: Bucket name not found");
 

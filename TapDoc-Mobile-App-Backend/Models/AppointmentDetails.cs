@@ -29,6 +29,7 @@ namespace TapDoc_Mobile_App_Backend.Models
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 
         public DateTime UpdatedAt { get; set; } 
+        public DateTime RefundDeadline {  get; set; }
 
         public virtual ICollection<DoctorDetails> Doctors { get; set; }
     }

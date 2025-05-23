@@ -14,6 +14,7 @@
         public string DoctorSpeciality { get; set; }
         public List<DoctorReviews> DoctorReviews { get; set; }
         public List<DoctorAvailability> DoctorAvailabilities { get; set; }
+        public List<DoctorQualification> DoctorQualifications { get; set; }
     }
     public class DoctorReviews
     {
@@ -26,5 +27,11 @@
     public class DoctorAvailability
     {
         public Dictionary<string, string> Availability { get; set; }
+    }
+    public class DoctorQualification
+    {
+        public string QualificationName { get; set; }
+        public string InstituteName { get; set; }
+        public string QualificationDescription {  get; set; }
     }
 }

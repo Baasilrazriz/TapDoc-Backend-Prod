@@ -8,12 +8,14 @@
         public string DoctorSpeciality { get; set; }
         public string DoctorCategory { get; set; }
         public double DoctorExperience { get; set; }
-        public int RemainingTime { get; set; }
+        public string RemainingTime { get; set; }
         public string AppointmentDate { get; set; }
         public string AppointmentDay { get; set; }
-        public DateTime AppointmentTime { get; set; }
-        public string AppointmentType {  get; set; }
-        public string AppointmentStatus {  get; set; }
+        public DateTime AppointmentTime { get; set; }   
+        public string AppointmentType { get; set; }
+        public string AppointmentStatus { get; set; }
+        public double AppointmentFees { get; set; }
+        public double DoctorRating { get; set; }
 
     }
 }
