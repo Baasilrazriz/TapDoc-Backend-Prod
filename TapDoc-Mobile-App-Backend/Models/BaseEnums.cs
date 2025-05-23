@@ -73,4 +73,5 @@
         public static int Image = 1;
         public static int Document = 2;
     }
+    
 }

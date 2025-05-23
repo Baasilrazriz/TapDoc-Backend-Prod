@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Amazon.S3.Model.Internal.MarshallTransformations;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ActionConstraints;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
+using System.Formats.Asn1;
 using TapDoc_Mobile_App_Backend.Data;
 using TapDoc_Mobile_App_Backend.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace TapDoc_Mobile_App_Backend.Services
 {
@@ -374,10 +377,245 @@ namespace TapDoc_Mobile_App_Backend.Services
                 AppointmentDescription = appointmentDetails.AppointmentDescription,
                 AppointmentBookedOn = $"{date:dddd}, {date:hh:mm tt}, {date:MMM} {date:dd}, {date:yyyy}",
                 RefundDeadline = $"{RefundDate:dddd}, {RefundDate:hh:mm tt}, {RefundDate:MMM} {RefundDate:dd}, {RefundDate:yyyy}",
+                AppointmentFee = appointmentDetails.AppointmentFee,
 
             };
         }
+        public async Task<string> ChangeAppointmentTimeSlots(ChangeTimeSlotsDTO reqDTO)
+        {
+            var newTimeSlots = new AppointmentRescheduleRequests
+            {
+                AppointmentID = reqDTO.AppointmentID,
+                NewStartTime = reqDTO.NewStartTime,
+                NewEndTime = reqDTO.NewEndTime,
+                ChangeRequestStatusID = BaseEnums.Pending
+            };
+            var existingAppointment = await _dbContext.Appointments.Where(x => x.AppointmentID == reqDTO.AppointmentID).FirstOrDefaultAsync();
+            if (existingAppointment != null)
+            {
+                existingAppointment.AppointmentStatus = BaseEnums.Pending;
+                await _dbContext.AddAsync(newTimeSlots);
+                await _dbContext.SaveChangesAsync();
+                return "Change request for time slots submitted successfully";
+            }
+            return "Change request failed for new time slots";
 
+        }
+        public async Task<List<GetChangeAppointmentsForDocDTO>> GetChangeRequestAppointments(int DoctorID)
+        {
+            var currentDateTime = DateTime.Now;
+
+            var rawAppointments = await (
+                from appt in _dbContext.Appointments
+                join req in _dbContext.AppointmentRescheduleRequests
+                    on appt.AppointmentID equals req.AppointmentID
+                join appdet in _dbContext.AppointmentsDetails
+                    on appt.AppointmentID equals appdet.AppointmentID
+                join patientdet in _dbContext.PatientDetails
+                    on appdet.PatientID equals patientdet.PatientID
+                where appt.DoctorID == DoctorID
+                      && req.ChangeRequestStatusID == (int)BaseEnums.Pending
+                select new
+                {
+                    appt,
+                    appdet,
+                    patientdet
+                }
+            ).ToListAsync();
+
+            var appointmentsWithPendingRequests = rawAppointments.Select(x =>
+            {
+                var remaining = x.appdet.StartTime - currentDateTime;
+                var remainingTimeFormatted = remaining.TotalMinutes < 0
+                    ? "Started"
+                    : $"{(int)remaining.TotalHours}h {remaining.Minutes}m";
+
+                return new GetChangeAppointmentsForDocDTO
+                {
+                    AppointmentID = x.appt.AppointmentID,
+                    PatientImageUrl = x.patientdet.PatientImageUrl,
+                    PatientName = x.patientdet.FullName,
+                    AppointmentStatus = MapAppointmentStatus(x.appt.AppointmentStatus),
+                    AppointmentType = MapAppointmentType(x.appt.AppointmentType),
+                    RemainingTime = remainingTimeFormatted,
+                    AppointmentDate = x.appdet.StartTime.ToString("dddd, MMMM dd"),
+                    AppointmentDay = x.appdet.StartTime.DayOfWeek.ToString(),
+                    AppointmentTime = x.appdet.StartTime,
+                    AppointmentFees = x.appdet.AppointmentFee
+                };
+            }).ToList();
+
+            return appointmentsWithPendingRequests;
+        }
+        public async Task<string> AcceptDeclineChangeRequest(int AppointmentID, int StatusID)
+        {
+            var appointment = _dbContext.Appointments.Where(x => x.AppointmentID == AppointmentID).FirstOrDefault();
+            var appointmentDetails = _dbContext.AppointmentsDetails.Where(x => x.AppointmentID == AppointmentID).FirstOrDefault();
+            var newTimeSlotAppointment = _dbContext.AppointmentRescheduleRequests.Where(x => x.AppointmentID == AppointmentID).FirstOrDefault();
+            if (appointment == null || newTimeSlotAppointment == null)
+            {
+                throw new Exception("No appointment found");
+            }
+            if (StatusID == (int)BaseEnums.Approved)
+            {
+                newTimeSlotAppointment.ChangeRequestStatusID = BaseEnums.Approved;
+                appointment.AppointmentStatus = BaseEnums.Approved;
+                appointmentDetails.StartTime = newTimeSlotAppointment.NewStartTime;
+                appointmentDetails.EndTime = newTimeSlotAppointment.NewEndTime;
+                await _dbContext.SaveChangesAsync();
+                return "Appointment accepted with new time slots";
+
+            }
+            else if (StatusID == (int)BaseEnums.Rejected)
+            {
+                newTimeSlotAppointment.ChangeRequestStatusID = BaseEnums.Rejected;
+                appointment.AppointmentStatus = BaseEnums.Rejected;
+                await _dbContext.SaveChangesAsync();
+                return "Appointment rejected";
+            }
+            throw new Exception("An error occurred while accepting or rejecting the appointment");
+        }
+        public async Task<DoctorAppointmentDetailsDTO> GetChangeRequestAppointmentDetails(int AppointmentID)
+        {
+            var appointment = _dbContext.Appointments.Where(x => x.AppointmentID == AppointmentID).FirstOrDefault();
+            var appointmentDetails = _dbContext.AppointmentsDetails.Where(x => x.AppointmentID == appointment.AppointmentID).FirstOrDefault();
+            var patientDetails = _dbContext.PatientDetails.Where(x => x.PatientID == appointment.PatientID).FirstOrDefault();
+            var changeRequest = _dbContext.AppointmentRescheduleRequests.Where(x => x.AppointmentID == appointment.AppointmentID).FirstOrDefault();
+
+            var start = changeRequest.NewStartTime;
+            var end = changeRequest.NewEndTime;
+            var date = appointmentDetails.AppointmentDate;
+            var timeSlots = new List<KeyValuePair<string, string>>();
+            var slotTime = start;
+
+            while (slotTime < end)
+            {
+                var nextSlot = slotTime.AddMinutes(30);
+                if (nextSlot > end) break;
+
+                string slotLabel = $"{slotTime:hh:mm tt} - {nextSlot:hh:mm tt}";
+                timeSlots.Add(new KeyValuePair<string, string>(slotTime.ToString("HH:mm"), slotLabel));
+
+                slotTime = nextSlot;
+            }
+            return new DoctorAppointmentDetailsDTO
+            {
+                AppointmentID = appointment.AppointmentID,
+                PatientName = patientDetails.FullName,
+                PatientImageUrl = patientDetails.PatientImageUrl,
+                ShowCaseAppointmentID = "AXZ" + AppointmentID + "B12",
+                TimeSlots = timeSlots,
+                AppointmentType = MapAppointmentType(appointment.AppointmentType),
+                AppointmentStatus = MapAppointmentStatus(appointment.AppointmentStatus),
+                AppointmentBookedOn = $"{date:dddd}, {date:hh:mm tt}, {date:MMM} {date:dd}, {date:yyyy}",
+                AppointmentDescription = appointmentDetails.AppointmentDescription,
+                AppointmentFee = appointmentDetails.AppointmentFee,
+            };
+        }
+        public async Task<string> AcceptRejectAppointment(int AppointmentID, int StatusID)
+        {
+            var appointment = _dbContext.Appointments.Where(x => x.AppointmentID == AppointmentID).FirstOrDefault();
+            if (appointment != null)
+            {
+                appointment.AppointmentStatus = StatusID;
+                await _dbContext.SaveChangesAsync();
+                return "Appointment status updated successfully";
+            }
+            return "Failed to accept reject appointment"; 
+        }
+        public async Task<DoctorAppointmentDetailsDTO> GetDoctorAppointmentDetails(int AppointmentID)
+        {
+            var appointment = _dbContext.Appointments.Where(x => x.AppointmentID == AppointmentID).FirstOrDefault();
+            var appointmentDetails = _dbContext.AppointmentsDetails.Where(x => x.AppointmentID == appointment.AppointmentID).FirstOrDefault();
+            var patientDetails = _dbContext.PatientDetails.Where(x => x.PatientID == appointment.PatientID).FirstOrDefault();
+            var start = appointmentDetails.StartTime;
+            var end = appointmentDetails.EndTime;
+            var date = appointmentDetails.AppointmentDate;
+            var timeSlots = new List<KeyValuePair<string, string>>();
+            var slotTime = start;
+
+            while (slotTime < end)
+            {
+                var nextSlot = slotTime.AddMinutes(30);
+                if (nextSlot > end) break;
+
+                string slotLabel = $"{slotTime:hh:mm tt} - {nextSlot:hh:mm tt}";
+                timeSlots.Add(new KeyValuePair<string, string>(slotTime.ToString("HH:mm"), slotLabel));
+
+                slotTime = nextSlot;
+            }
+            return new DoctorAppointmentDetailsDTO
+            {
+                AppointmentID = appointment.AppointmentID,
+                PatientName = patientDetails.FullName,
+                PatientImageUrl = patientDetails.PatientImageUrl,
+                ShowCaseAppointmentID = "AXZ" + AppointmentID + "B12",
+                TimeSlots = timeSlots,
+                AppointmentType = MapAppointmentType(appointment.AppointmentType),
+                AppointmentStatus = MapAppointmentStatus(appointment.AppointmentStatus),
+                AppointmentBookedOn = $"{date:dddd}, {date:hh:mm tt}, {date:MMM} {date:dd}, {date:yyyy}",
+                AppointmentDescription = appointmentDetails.AppointmentDescription,
+                AppointmentFee = appointmentDetails.AppointmentFee,
+            };
+        }
+
+        public async Task<List<DoctorAppointmentHistoryDTO>> GetDoctorAppointmentHistory(int? AppointmentStatus, int? pageNo, int? pageSize, int DoctorID)
+        {
+            DateTime currentDateTime = DateTime.Now;
+
+            int currentPage = pageNo > 0 ? pageNo.Value : 1;
+            int currentPageSize = pageSize > 0 ? pageSize.Value : 10;
+
+            var query = _dbContext.Appointments
+                .Where(a => a.DoctorID == DoctorID && a.IsActive && !a.IsDeleted);
+
+            if (AppointmentStatus.HasValue)
+            {
+                query = query.Where(a => a.AppointmentStatus == AppointmentStatus.Value);
+            }
+
+            var appointments = await query
+                .OrderBy(a => a.CreatedOn)
+                .Skip((currentPage - 1) * currentPageSize)
+                .Take(currentPageSize)
+                .Select(a => new
+                {
+                    a.AppointmentID,
+                    PatientImageUrl = a.Patient.PatientImageUrl,
+                    PatientName = a.Patient.FullName,
+                    StartTime = a.AppointmentDetails.StartTime,
+                    a.AppointmentType,
+                    a.AppointmentStatus,
+                    a.AppointmentDetails.AppointmentFee,
+                })
+                .ToListAsync();
+
+            var appointmentDTOs = new List<DoctorAppointmentHistoryDTO>();
+
+            foreach (var a in appointments)
+            {
+                var remaining = a.StartTime - currentDateTime;
+                var remainingTimeFormatted = remaining.TotalMinutes < 0
+                    ? "Started"
+                    : $"{(int)remaining.TotalHours}h {remaining.Minutes}m";
+
+                appointmentDTOs.Add(new DoctorAppointmentHistoryDTO
+                {
+                    AppointmentID = a.AppointmentID,
+                    PatientImageUrl = a.PatientImageUrl,
+                    PatientName= a.PatientName,
+                    AppointmentDate = a.StartTime.ToString("dddd, MMMM dd"),
+                    AppointmentDay = a.StartTime.DayOfWeek.ToString(),
+                    AppointmentTime = a.StartTime,
+                    RemainingTime = remainingTimeFormatted,
+                    AppointmentStatus = MapAppointmentStatus(a.AppointmentStatus),
+                    AppointmentType = MapAppointmentType(a.AppointmentType),
+                    AppointmentFees = a.AppointmentFee,
+                });
+            }
+
+            return appointmentDTOs;
+        }
 
     }
 }

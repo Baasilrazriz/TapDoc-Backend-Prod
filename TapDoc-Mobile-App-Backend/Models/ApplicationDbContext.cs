@@ -38,6 +38,7 @@ namespace TapDoc_Mobile_App_Backend.Models
         public DbSet<Payments> Payments { get; set; }
         public DbSet<Attachments> Attachments { get; set; }
         public DbSet<DoctorQualifications> DoctorQualifacations {  get; set; }
+        public DbSet<AppointmentRescheduleRequests> AppointmentRescheduleRequests {  get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

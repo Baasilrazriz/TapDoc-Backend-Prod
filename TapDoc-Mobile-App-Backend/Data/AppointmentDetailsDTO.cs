@@ -14,5 +14,6 @@
         public string AppointmentBookedOn {  get; set; }
         public string AppointmentDescription {  get; set; }
         public string RefundDeadline {  get; set; }
+        public double AppointmentFee { get; set; }
     }
 }
