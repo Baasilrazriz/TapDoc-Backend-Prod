@@ -97,34 +97,6 @@ namespace TapDoc_Mobile_App_Backend.Services
             await _dbContext.AddAsync(newPrescriptionRecord);
             await _dbContext.SaveChangesAsync();
 
-            var newPrescriptionRecordDetails = new PrescriptionDetails
-            {
-                PrescriptionRecordID = newPrescriptionRecord.PrescriptionRecordID,
-                MedicationName = reqDTO.MedicationName,
-                StartDate = reqDTO.PrescriptionStartDate,
-                EndDate = reqDTO.PrescriptionEndDate,
-            };
-            await _dbContext.AddAsync(newPrescriptionRecordDetails);
-            await _dbContext.SaveChangesAsync();
-
-            var newPrescriptionRecordDetailTimings = new PrescriptionDetailTimings
-            {
-                PrescriptionDetailID = newPrescriptionRecordDetails.PrescriptionDetailID,
-                ReminderOffsetMinutes = reqDTO.ReminderOffsetMinutes,
-            };
-            await _dbContext.AddAsync(newPrescriptionRecordDetailTimings);
-            await _dbContext.SaveChangesAsync();
-
-            if(reqDTO.PrescriptionTimingDTO.IsMorning && reqDTO.PrescriptionTimingDTO.IsEvening && reqDTO.PrescriptionTimingDTO.IsNight)
-            {
-                var newDetails = new Localizations
-                {
-                    TableName = "PrescriptionDetailTimings",
-                    PrimaryKey = newPrescriptionRecordDetailTimings.PrescriptionDetailTimingsID,
-                    Value = ""
-                };
-            }
-
             return new PrescriptionDTO();
         }
     }

@@ -115,7 +115,7 @@ namespace TapDoc_Mobile_App_Backend.Services
                 _ => "Unknown"
             };
         }
-
+        
 
         public async Task<List<BookAnAppointmentDoctorsDTO>> GetBookAnAppointmentDoctors(int? CategoryID, string? City, int pageNo, int pageSize)
         {
@@ -138,6 +138,8 @@ namespace TapDoc_Mobile_App_Backend.Services
                     d.DoctorID,
                     d.Image,
                     d.FullName,
+                    d.DoctorFee,
+                    d.Gender,
                     d.Speciality,
                     d.CategoryID,
                     d.TotalExperience,
@@ -165,7 +167,9 @@ namespace TapDoc_Mobile_App_Backend.Services
                                             .FirstOrDefault() ?? "Unknown",
                 DoctorExperience = d.TotalExperience,
                 DoctorAddress = $"{d.Address}, {d.City}",
-                DoctorRating = d.TotalRatings > 0 ? d.SumRatings / d.TotalRatings : 0
+                DoctorRating = d.TotalRatings > 0 ? d.SumRatings / d.TotalRatings : 0,
+                DoctorFee = d.DoctorFee,
+                DoctorGender = d.Gender
             }).ToList();
 
             return doctorDTOs;
@@ -521,7 +525,7 @@ namespace TapDoc_Mobile_App_Backend.Services
                 await _dbContext.SaveChangesAsync();
                 return "Appointment status updated successfully";
             }
-            return "Failed to accept reject appointment"; 
+            return "Failed to accept reject appointment";
         }
         public async Task<DoctorAppointmentDetailsDTO> GetDoctorAppointmentDetails(int AppointmentID)
         {
@@ -603,7 +607,7 @@ namespace TapDoc_Mobile_App_Backend.Services
                 {
                     AppointmentID = a.AppointmentID,
                     PatientImageUrl = a.PatientImageUrl,
-                    PatientName= a.PatientName,
+                    PatientName = a.PatientName,
                     AppointmentDate = a.StartTime.ToString("dddd, MMMM dd"),
                     AppointmentDay = a.StartTime.DayOfWeek.ToString(),
                     AppointmentTime = a.StartTime,
