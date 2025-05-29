@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel;
 using System.Net.Mail;
 using TapDoc_Mobile_App_Backend.Data;
 using TapDoc_Mobile_App_Backend.Models;
@@ -13,7 +14,7 @@ namespace TapDoc_Mobile_App_Backend.Services
         public UsersService(ApplicationDbContext context, S3Service s3Service)
         {
             _context = context;
-            _s3Service = s3Service; 
+            _s3Service = s3Service;
         }
         public async Task<CreateUserDTO> CreateUser(CreateUserDTO userDTO)
         {
@@ -56,7 +57,24 @@ namespace TapDoc_Mobile_App_Backend.Services
 
             return attachment;
         }
-       
+        public async Task<DoctorLoginDTO> GetDoctorUserID(string email)
+        {
+            var user = await _context.Users.Where(x => x.Email == email).FirstOrDefaultAsync();
+            var doctorDetails = await _context.DoctorDetails.Where(x => x.UserID == user.UserID).FirstOrDefaultAsync();
+            return new DoctorLoginDTO
+            {
+                UserID = user.UserID,
+                DoctorID = doctorDetails.DoctorID,
+                FullName = doctorDetails.FullName,
+                UserName = doctorDetails.UserName,
+                ImageUrl = doctorDetails.Image,
+                Email = doctorDetails.Email,
+            };
+        }
+
+
+
+
 
     }
 

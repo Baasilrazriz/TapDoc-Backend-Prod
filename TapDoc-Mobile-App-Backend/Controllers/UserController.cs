@@ -44,6 +44,16 @@ namespace TapDoc_Mobile_App_Backend.Controllers
             var attachment = await _userService.UploadAttachmentAsync(model);
             return Ok(attachment);
         }
+        [HttpGet("get-doctor-userid")]
+        public async Task<IActionResult> GetDoctorUserID([FromQuery]string email)
+        {
+            if (email == null)
+            {
+                throw new Exception("No email found");
+            }
+            var result = await _userService.GetDoctorUserID (email);
+            return Ok(result);
+        }
 
       
     }
